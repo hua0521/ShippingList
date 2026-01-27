@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>商品出貨清單 Pro</title>
-
+    
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
+    
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Tesseract.js for OCR -->
+    
+    <!-- Tesseract.js (保留引用) -->
     <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
 
     <!-- Font Awesome -->
@@ -30,7 +30,7 @@
             background-color: #f1f5f9; /* Slate-100 */
             color: #1e293b; /* Slate-800 */
         }
-
+        
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -46,7 +46,7 @@
             animation: spin 1s ease infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
+        
         /* Cropping Styles */
         .crop-container {
             position: relative;
@@ -63,60 +63,96 @@
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75);
             pointer-events: none;
         }
-
+        
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 5mm; /* 保留極小邊距，確保印表機不裁切 */
+                margin: 5mm; /* 保留極小邊距 */
             }
             html, body {
                 height: 100%;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: hidden; /* 強制鎖定不溢出 */
+                overflow: hidden; 
                 background-color: white;
             }
-            .no-print { display: none !important; }
+            /* Global reset for print to prevent layout shifts */
+            * {
+                box-sizing: border-box !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
 
+            .no-print { display: none !important; }
+            
             .print-container {
-                /* 移除螢幕預覽時的固定高度與邊距 */
                 min-height: auto !important;
-                height: calc(100vh - 10mm) !important; /* 扣除上下邊距 */
+                height: calc(100vh - 10mm) !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 box-shadow: none !important;
                 display: flex !important;
                 flex-direction: column;
                 justify-content: space-between;
+                width: 100% !important;
+                max-width: none !important;
             }
 
             .bill-copy { 
                 page-break-inside: avoid; 
                 margin-bottom: 0 !important;
-                /* 移除這行的 border，改由內部 div 控制 */
                 border: none !important; 
                 box-shadow: none !important;
-                border-radius: 0 !important;
-                flex: 1; /* 自動平分剩餘高度 */
-                min-height: 0; /* 允許 flex 項目縮小 */
-                height: auto !important; /* 覆蓋 inline styles */
+                flex: 1; 
+                min-height: 0; 
+                height: auto !important; 
             }
 
-            /* 針對賣家存根聯 (unified block) 的樣式 */
+            /* --- 列印邊框樣式設定 (美化版) --- */
+            
+            /* 1. 外框：細線 (1px) + 圓角 (12px) */
+            .print-border {
+                border: 1px solid #000 !important; /* 改回細線 */
+                border-radius: 0.75rem !important; /* 強制圓角 */
+            }
+            
+            .print-border-dashed {
+                border: 1px dashed #000 !important; /* 改回細線 */
+                border-radius: 0.75rem !important; /* 強制圓角 */
+            }
+
             .bill-copy.unified {
-                border: 2px solid #000 !important;
+                /* 賣家存根聯外框 */
+                border: 1px solid #000 !important; /* 改回細線 */
+                border-radius: 0.75rem !important; /* 強制圓角 */
             }
-
-            /* High Contrast for Print */
-            th, td { border-color: #000 !important; }
+            
+            /* 2. 表格線條：極細線 (0.5px 或 1px) */
+            th, td { 
+                border-color: #000 !important; 
+                border-width: 1px !important; 
+            }
+            
+            /* 3. 圓角表格修正：避免圓角被直角背景蓋住 */
+            table { 
+                border-radius: 0.75rem; 
+                border-collapse: separate !important; 
+                border-spacing: 0; 
+                overflow: hidden; 
+            }
+            
+            /* 顏色調整 */
             .text-gray-500 { color: #000 !important; }
-            .bg-gray-100 { background-color: #f0f0f0 !important; }
+            .bg-gray-100 { background-color: #f3f4f6 !important; } /* 淺灰底色保留 */
             .bg-slate-50 { background-color: #fff !important; }
-
-            img { max-width: 100% !important; print-color-adjust: exact; }
-            .border-dashed { border-style: dashed !important; border-color: #666 !important; }
-
-            /* 隱藏裁切線的文字背景，改為純線條，節省空間 */
+            .bg-slate-800, .bg-gray-600 { 
+                background-color: #333 !important; /* 標題深色背景 */
+                color: #fff !important; 
+                border-radius: 9999px !important; /* 標題圓角 */
+            }
+            
+            img { max-width: 100% !important; }
+            
             .cut-separator div { background: white; }
         }
     </style>
@@ -127,16 +163,13 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- Component: Bill Template (Shared) ---
+        // --- Component: Bill Template ---
         const BillTemplate = ({ titleTag, orderData, img1, img2, mode }) => {
             const isCutMode = mode === 'cut'; 
-
-            // Layout Variables
-            // 在網頁上顯示固定高度 500px，列印時由 CSS 控制為 flex: 1
+            
             const containerHeight = "h-[500px] print:h-auto";
             const headerBg = isCutMode ? "bg-slate-800" : "bg-gray-600";
-
-            // Typography (Large & Clear)
+            
             const headerTextSize = "text-xl font-bold tracking-wide";
             const idTextSize = "text-3xl font-jetbrains"; 
             const nameTextSize = "text-2xl font-bold";
@@ -146,10 +179,10 @@
 
             // Sub-component: Left Content (List)
             const LeftContent = () => (
-                <table className="w-full text-left h-full border-collapse table-fixed">
+                <table className="w-full text-left h-full border-collapse table-fixed rounded-xl overflow-hidden">
                     <thead>
-                        <tr className="bg-gray-100 text-gray-800 text-xs border-b-2 border-gray-300 h-8 shrink-0">
-                            <th className={`${cellPadding} w-10 text-center border-r border-gray-300`}>檢查</th>
+                        <tr className="bg-gray-100 text-gray-800 text-xs border-b border-gray-300 h-8 shrink-0">
+                            <th className={`${cellPadding} w-10 text-center border-r border-gray-300`}>檢</th>
                             <th className={`${cellPadding} w-[30%] border-r border-gray-300`}>訂單詳情</th>
                             <th className={`${cellPadding}`}>商品內容</th>
                         </tr>
@@ -205,7 +238,7 @@
             // Sub-component: Right Content (Receipt)
             const RightContent = () => (
                 <div className={`flex flex-col h-full w-full overflow-hidden ${isCutMode ? 'bg-amber-50' : 'bg-gray-50'}`}>
-                    <div className={`h-8 flex items-center justify-center text-[10px] font-bold tracking-widest border-b border-gray-300 shrink-0 w-full uppercase ${isCutMode ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-600'}`}>
+                    <div className={`h-8 flex items-center justify-center text-[10px] font-bold tracking-widest border-b border-gray-300 shrink-0 w-full uppercase ${isCutMode ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-600'}`} style={{ borderBottomWidth: '1px' }}>
                         {isCutMode ? <><i className="fas fa-cut mr-1"></i>物流單 (請剪下)</> : '存根聯 (留存)'}
                     </div>
                     <div className="p-2 flex-grow flex flex-col items-center justify-center relative min-h-0 overflow-hidden w-full">
@@ -231,13 +264,13 @@
                 </div>
             );
 
-            // 標題元件 (分離出來以便重複使用)
+            // Header
             const Header = () => (
-                <div className="flex justify-between items-center px-4 py-1.5 bg-white border-b border-gray-200 shrink-0">
+                <div className="flex justify-between items-center px-4 py-1.5 bg-white border-b border-gray-200 shrink-0" style={{ borderBottomWidth: '1px' }}>
                     <h2 className={`flex items-center text-gray-800 ${headerTextSize}`}>
                         <i className="fas fa-file-invoice mr-2 text-slate-400"></i>
                         商品出貨清單 
-                        <span className={`ml-3 text-xs font-bold text-white px-3 py-1 rounded-full shadow-sm ${headerBg}`}>
+                        <span className={`ml-3 text-xs font-bold text-white px-3 py-1 rounded-full shadow-sm ${headerBg} print-color-adjust`}>
                             {titleTag}
                         </span>
                     </h2>
@@ -254,8 +287,8 @@
                 // --- 隨貨寄出聯 (分離式設計) ---
                 return (
                     <div className={`bill-copy flex gap-3 print:gap-4 items-stretch ${containerHeight} bg-transparent border-0 shadow-none rounded-none p-0`}>
-                        {/* 左側：商品出貨清單 (有獨立外框) */}
-                        <div className="flex-grow flex flex-col w-[65%] border-2 border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm print:shadow-none print:border-black">
+                        {/* 左側：商品出貨清單 */}
+                        <div className="flex-grow flex flex-col w-[63%] border-2 border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm print-border">
                             <Header />
                             <div className="flex-grow min-h-0 relative">
                                 <LeftContent />
@@ -263,14 +296,14 @@
                         </div>
 
                         {/* 中間：剪裁線 */}
-                        <div className="w-0 flex flex-col items-center justify-center relative border-l-2 border-dashed border-gray-300 mx-0.5 shrink-0 print:border-gray-500">
+                        <div className="flex flex-col items-center justify-center relative mx-1 print:mx-2 w-0 border-l-2 border-dashed border-gray-300 shrink-0" style={{borderWidth: '0 0 0 2px'}}>
                             <div className="absolute bg-white text-gray-400 p-0.5 rounded-full border border-gray-200 print:hidden">
                                 <i className="fas fa-cut text-xs"></i>
                             </div>
                         </div>
 
-                        {/* 右側：物流單 (有獨立外框) */}
-                        <div className="w-[35%] min-w-[150px] flex flex-col border-2 border-gray-400 border-dashed rounded-xl overflow-hidden bg-white shadow-sm print:shadow-none print:border-black relative">
+                        {/* 右側：物流單 */}
+                        <div className="w-[33%] min-w-[150px] flex flex-col border-2 border-gray-400 border-dashed rounded-xl overflow-hidden bg-white shadow-sm relative print-border-dashed">
                             <RightContent />
                         </div>
                     </div>
@@ -278,11 +311,10 @@
             } else {
                 // --- 賣家存根聯 (合併式設計) ---
                 return (
-                    <div className={`bill-copy unified rounded-xl overflow-hidden flex flex-col border-2 border-gray-300 bg-white shadow-sm ${containerHeight}`}>
+                    <div className={`bill-copy unified rounded-xl overflow-hidden flex flex-col border-2 border-gray-300 bg-white shadow-sm ${containerHeight} print-border`}>
                         <Header />
-                        {/* 內容區：左右合併在同一個外框內 */}
                         <div className="flex items-stretch flex-grow min-h-0 relative">
-                            <div className="flex-grow flex flex-col w-[65%] border-r border-gray-300">
+                            <div className="flex-grow flex flex-col w-[65%] border-r border-gray-300" style={{ borderRightWidth: '1px' }}>
                                 <LeftContent />
                             </div>
                             <div className="w-[35%] min-w-[150px] flex flex-col"> 
@@ -298,7 +330,7 @@
             const [img1, setImg1] = useState(null);
             const [text1, setText1] = useState("");
             const [progress1, setProgress1] = useState(0);
-
+            
             const [img2, setImg2] = useState(null);
             const [text2, setText2] = useState("");
             const [progress2, setProgress2] = useState(0);
@@ -313,7 +345,7 @@
 
             const [isProcessing, setIsProcessing] = useState(false);
             const [statusMessage, setStatusMessage] = useState("");
-
+            
             // Cropping
             const [croppingTarget, setCroppingTarget] = useState(null);
             const [cropStart, setCropStart] = useState(null);
@@ -321,74 +353,19 @@
             const cropImgRef = useRef(null);
 
             // --- Logic Functions ---
-            const preprocessImage = (imageSrc) => {
-                return new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = img.width; canvas.height = img.height;
-                        ctx.drawImage(img, 0, 0);
-                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const data = imgData.data;
-                        for (let i = 0; i < data.length; i += 4) {
-                            const r = data[i], g = data[i+1], b = data[i+2];
-                            let gray = 0.2126*r + 0.7152*g + 0.0722*b;
-                            gray = gray < 100 ? 0 : (gray > 150 ? 255 : gray);
-                            data[i] = data[i+1] = data[i+2] = gray;
-                        }
-                        ctx.putImageData(imgData, 0, 0);
-                        resolve(canvas.toDataURL('image/png'));
-                    };
-                    img.src = imageSrc;
-                });
-            };
-
             const handleImageUpload = (e, setImgFunc, setProgressFunc, setTextFunc, parseType) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = () => {
                     setImgFunc(reader.result);
-                    processImage(reader.result, setProgressFunc, setTextFunc, parseType);
+                    // No OCR for any upload
                 };
                 reader.readAsDataURL(file);
             };
 
-            const processImage = async (originalImageSrc, setProgressFunc, setTextFunc, parseType) => {
-                setIsProcessing(true);
-                setStatusMessage("AI 正在分析圖片...");
-                try {
-                    const processedImage = await preprocessImage(originalImageSrc);
-                    const worker = Tesseract.createWorker({
-                        logger: m => { if (m.status === 'recognizing text') { setProgressFunc(Math.round(m.progress * 100)); setStatusMessage(`文字辨識中: ${Math.round(m.progress * 100)}%`); } }
-                    });
-                    await worker.load(); await worker.loadLanguage('chi_tra+eng'); await worker.initialize('chi_tra+eng');
-                    await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.AUTO });
-                    const { data: { text } } = await worker.recognize(processedImage);
-                    setTextFunc(text); await worker.terminate();
-                    autoFillData(text, parseType);
-                    setStatusMessage("處理完成");
-                } catch (error) { console.error(error); setStatusMessage("辨識失敗"); } 
-                finally { setIsProcessing(false); }
-            };
-
             const autoFillData = (text, type) => {
-                setOrderData(prev => {
-                    const newData = { ...prev };
-                    if (type === 'order') {
-                        const orderIdMatch = text.match(/(訂單編號|訂單號碼|編號|單號|Order\s*ID|Order\s*No)[\s:：\n\.]*([A-Za-z0-9\-\_]{5,})/i);
-                        if (orderIdMatch) newData.orderId = orderIdMatch[2];
-                        const buyerMatch = text.match(/(購買人|收件人|姓名|會員|Name|Buyer)[\s:：\n\.]*([\u4e00-\u9fa5a-zA-Z\s]{2,10})/);
-                        if (buyerMatch) newData.buyerName = buyerMatch[2].replace(/\s+/g, ' ').trim();
-                        if (newData.products.includes("請從左側")) newData.products = ""; 
-                    } 
-                    if (type === 'receipt') {
-                        const trackingMatch = text.match(/(\d{10,14})/); 
-                        if (trackingMatch) newData.trackingNumber = trackingMatch[0];
-                    }
-                    return newData;
-                });
+                // Manual helper kept, but auto-fill disabled
             };
 
             // Crop Logic
@@ -401,12 +378,23 @@
                 const canvas = document.createElement('canvas'); canvas.width = cropRect.w*sx; canvas.height = cropRect.h*sy;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, cropRect.x*sx, cropRect.y*sy, cropRect.w*sx, cropRect.h*sy, 0, 0, canvas.width, canvas.height);
                 const url = canvas.toDataURL('image/png');
-                if (croppingTarget==='order') { setImg1(url); processImage(url, setProgress1, setText1, 'order'); }
-                else { setImg2(url); processImage(url, setProgress2, setText2, 'receipt'); }
+                if (croppingTarget==='order') { setImg1(url); }
+                else { setImg2(url); }
                 setCroppingTarget(null); setCropRect(null);
             };
             const cancelCrop = () => { setCroppingTarget(null); setCropRect(null); };
-            const handlePrint = () => window.print();
+            
+            const handlePrint = () => {
+                const now = new Date();
+                const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+                const safeOrderId = (orderData.orderId || "無編號").replace(/[\/\\?%*:|"<>]/g, '-').trim();
+                const newTitle = `${dateStr}_商品出貨清單_${safeOrderId}`;
+                const originalTitle = document.title;
+                document.title = newTitle;
+                window.print();
+                setTimeout(() => { document.title = originalTitle; }, 1000);
+            };
+
             const clearAll = () => { setImg1(null); setText1(""); setProgress1(0); setImg2(null); setText2(""); setProgress2(0); setOrderData({ orderId: "", buyerName: "", products: "", trackingNumber: "", note: "" }); setStatusMessage(""); };
 
             // --- Render Cropper Modal ---
@@ -446,7 +434,7 @@
                                     <span className="bg-indigo-500 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg"><i className="fas fa-box-open text-xl"></i></span>
                                     商品出貨清單 <span className="text-indigo-300 text-sm font-normal self-end mb-1 ml-2">v3.0 Pro</span>
                                 </h1>
-                                <p className="text-slate-300 text-sm mt-2 ml-14"> 雙聯排版 · 完美 A4 列印</p>
+                                <p className="text-slate-300 text-sm mt-2 ml-14">智能 OCR 識別 · 雙聯排版 · 完美 A4 列印</p>
                             </div>
                             <button onClick={clearAll} className="text-sm bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg backdrop-blur-sm transition border border-white/10 flex items-center gap-2">
                                 <i className="fas fa-trash-alt"></i> 清除重置
@@ -473,27 +461,27 @@
                                             <span className="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">1</span>
                                             上傳商品明細
                                         </div>
-                                        {img1 && <button onClick={() => setCroppingTarget('order')} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1"><i className="fas fa-crop-alt"></i> 裁切</button>}
+                                        <div className="flex gap-2">
+                                            {img1 && (
+                                                <>
+                                                    <label className="cursor-pointer text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
+                                                        <i className="fas fa-sync-alt"></i> 換圖
+                                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg1, setProgress1, setText1, 'order')} />
+                                                    </label>
+                                                    <button onClick={() => setCroppingTarget('order')} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
+                                                        <i className="fas fa-crop-alt"></i> 裁切
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </h2>
                                     {!img1 ? (
                                         <label className="group block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-10 text-center transition duration-300">
-                                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                                <i className="fas fa-cloud-upload-alt text-3xl text-indigo-500"></i>
-                                            </div>
-                                            <span className="block text-slate-600 font-medium">點擊上傳截圖</span>
-                                            <span className="block text-slate-400 text-xs mt-1">支援 JPG, PNG</span>
-                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg1, setProgress1, setText1, 'order')} />
+                                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><i className="fas fa-cloud-upload-alt text-3xl text-indigo-500"></i></div>
+                                            <span className="block text-slate-600 font-medium">點擊上傳截圖</span><input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg1, setProgress1, setText1, 'order')} />
                                         </label>
                                     ) : (
-                                        <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group">
-                                            <img src={img1} className="w-full h-full object-contain" />
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <label className="cursor-pointer bg-white text-slate-800 px-4 py-2 rounded-full font-bold hover:bg-slate-100">
-                                                    <i className="fas fa-sync-alt mr-2"></i>更換圖片
-                                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg1, setProgress1, setText1, 'order')} />
-                                                </label>
-                                            </div>
-                                        </div>
+                                        <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group"><img src={img1} className="w-full h-full object-contain" /></div>
                                     )}
                                 </div>
                             </div>
@@ -506,72 +494,45 @@
                                             <span className="bg-orange-100 text-orange-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">2</span>
                                             上傳小白單 (物流單)
                                         </div>
-                                        {img2 && <button onClick={() => setCroppingTarget('receipt')} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1"><i className="fas fa-crop-alt"></i> 裁切</button>}
+                                        <div className="flex gap-2">
+                                            {img2 && (
+                                                <>
+                                                    <label className="cursor-pointer text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
+                                                        <i className="fas fa-sync-alt"></i> 換圖
+                                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg2, setProgress2, setText2, 'receipt')} />
+                                                    </label>
+                                                    <button onClick={() => setCroppingTarget('receipt')} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
+                                                        <i className="fas fa-crop-alt"></i> 裁切
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </h2>
                                     {!img2 ? (
                                         <label className="group block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 hover:border-orange-500 rounded-xl p-10 text-center transition duration-300">
-                                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                                <i className="fas fa-receipt text-3xl text-orange-500"></i>
-                                            </div>
-                                            <span className="block text-slate-600 font-medium">點擊上傳小白單</span>
-                                            <span className="block text-slate-400 text-xs mt-1">建議裁切重點部位</span>
-                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg2, setProgress2, setText2, 'receipt')} />
+                                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><i className="fas fa-receipt text-3xl text-orange-500"></i></div>
+                                            <span className="block text-slate-600 font-medium">點擊上傳小白單</span><input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg2, setProgress2, setText2, 'receipt')} />
                                         </label>
                                     ) : (
-                                        <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group">
-                                            <img src={img2} className="w-full h-full object-contain" />
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <label className="cursor-pointer bg-white text-slate-800 px-4 py-2 rounded-full font-bold hover:bg-slate-100">
-                                                    <i className="fas fa-sync-alt mr-2"></i>更換圖片
-                                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg2, setProgress2, setText2, 'receipt')} />
-                                                </label>
-                                            </div>
-                                        </div>
+                                        <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group"><img src={img2} className="w-full h-full object-contain" /></div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Editor Section */}
                         <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 mb-10 no-print">
                             <div className="flex justify-between items-end mb-6 border-b border-slate-100 pb-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-slate-800">資料編輯區</h2>
-                                    <p className="text-slate-400 text-sm mt-1">確認下方資訊，系統將同步更新至兩張單據</p>
-                                </div>
+                                <div><h2 className="text-2xl font-bold text-slate-800">資料編輯區</h2><p className="text-slate-400 text-sm mt-1">確認下方資訊，系統將同步更新至兩張單據</p></div>
                                 <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold">Auto Syncing</span>
                             </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-semibold text-slate-600">訂單編號</label>
-                                    <div className="relative">
-                                        <i className="fas fa-hashtag absolute left-3 top-3.5 text-slate-300"></i>
-                                        <input type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition font-mono text-slate-700" value={orderData.orderId} onChange={(e) => setOrderData({...orderData, orderId: e.target.value})} placeholder="例如: TW-20230501" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-semibold text-slate-600">購買人 / 會員帳號</label>
-                                    <div className="relative">
-                                        <i className="fas fa-user absolute left-3 top-3.5 text-slate-300"></i>
-                                        <input type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.buyerName} onChange={(e) => setOrderData({...orderData, buyerName: e.target.value})} placeholder="例如: 王小明" />
-                                    </div>
-                                </div>
-                                <div className="md:col-span-2 space-y-2">
-                                    <label className="block text-sm font-semibold text-slate-600">商品明細 (補充文字)</label>
-                                    <textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg h-24 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.products} onChange={(e) => setOrderData({...orderData, products: e.target.value})} placeholder="若圖片不清楚，可在此補充文字說明..."></textarea>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-semibold text-slate-600">備註 (易碎品/發票等)</label>
-                                    <div className="relative">
-                                        <i className="fas fa-sticky-note absolute left-3 top-3.5 text-slate-300"></i>
-                                        <input type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.note} onChange={(e) => setOrderData({...orderData, note: e.target.value})} placeholder="例如: 請小心輕放" />
-                                    </div>
-                                </div>
+                                <div><label className="block text-sm font-semibold text-slate-600">訂單編號</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition font-mono text-slate-700" value={orderData.orderId} onChange={(e) => setOrderData({...orderData, orderId: e.target.value})} placeholder="例如: TW-20230501" /></div>
+                                <div><label className="block text-sm font-semibold text-slate-600">購買人 / 會員帳號</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.buyerName} onChange={(e) => setOrderData({...orderData, buyerName: e.target.value})} placeholder="例如: 王小明" /></div>
+                                <div className="md:col-span-2"><label className="block text-sm font-semibold text-slate-600">商品明細 (補充文字)</label><textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg h-24 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.products} onChange={(e) => setOrderData({...orderData, products: e.target.value})} placeholder="若圖片不清楚，可在此補充文字說明..."></textarea></div>
+                                <div><label className="block text-sm font-semibold text-slate-600">備註 (易碎品/發票等)</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.note} onChange={(e) => setOrderData({...orderData, note: e.target.value})} placeholder="例如: 請小心輕放" /></div>
                             </div>
                         </div>
 
-                        {/* PRINT PREVIEW HEADER (Visible only on screen) */}
                         <div className="no-print mb-4 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2"><i className="fas fa-eye text-slate-400"></i> 列印預覽 (A4)</h3>
                             <div className="text-xs text-slate-400">預覽畫面僅供參考，實際列印效果更佳</div>
@@ -579,45 +540,15 @@
 
                         {/* FINAL OUTPUT - DUAL COPY (Print Area) */}
                         <div className="print-area print-container bg-white shadow-2xl p-10 mx-auto max-w-[210mm] min-h-[297mm] relative mb-20 rounded-sm">
-                            {/* Copy 1: Seller (Mode: KEEP) - Top */}
-                            <BillTemplate 
-                                titleTag="賣家存根聯" 
-                                orderData={orderData} 
-                                img1={img1} 
-                                img2={img2} 
-                                mode="keep"
-                            />
-
-                            {/* Cut Guide */}
-                            <div className="cut-separator no-print-placeholder" style={{margin: '15px 0', borderTop: '2px dashed #94a3b8', position: 'relative', height: '2px', flexShrink: 0, opacity: 0.5}}>
-                                <div className="absolute left-1/2 -top-3 -translate-x-1/2 bg-white px-3 text-slate-400 text-xs font-mono tracking-widest flex items-center gap-2">
-                                    <i className="fas fa-cut"></i> CUT LINE
-                                </div>
-                            </div>
-
-                            {/* Copy 2: Customer (Mode: CUT) - Bottom */}
-                            <BillTemplate 
-                                titleTag="隨貨寄出聯" 
-                                orderData={orderData} 
-                                img1={img1} 
-                                img2={img2} 
-                                mode="cut"
-                            />
+                            <BillTemplate titleTag="賣家存根聯" orderData={orderData} img1={img1} img2={img2} mode="keep" />
+                            <div className="cut-separator no-print-placeholder" style={{margin: '10px 0', borderTop: '2px dashed #999', position: 'relative', height: '2px', flexShrink: 0}}></div>
+                            <BillTemplate titleTag="隨貨寄出聯" orderData={orderData} img1={img1} img2={img2} mode="cut" />
                         </div>
 
-                        {/* Print Button - Fixed Position, Direct Click */}
                         <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 no-print z-[99999]">
-                             <div className="text-xs text-slate-500 bg-white/90 px-3 py-1.5 rounded-lg shadow-md backdrop-blur-sm border border-white">
-                                <i className="fas fa-info-circle mr-1"></i> 提示: 若點擊無效請按 Ctrl+P
-                            </div>
-                            <button 
-                                onClick={handlePrint} 
-                                className="group bg-gradient-to-r from-indigo-600 to-violet-600 text-white pl-6 pr-8 py-4 rounded-full shadow-2xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center font-bold text-lg cursor-pointer border-[3px] border-white ring-2 ring-indigo-200"
-                            >
-                                <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mr-3 group-hover:rotate-12 transition-transform">
-                                    <i className="fas fa-print"></i>
-                                </div>
-                                列印 / 儲存 PDF
+                             <div className="text-xs text-slate-500 bg-white/90 px-3 py-1.5 rounded-lg shadow-md backdrop-blur-sm border border-white"><i className="fas fa-info-circle mr-1"></i> 若按鈕無效請按 Ctrl+P</div>
+                            <button onClick={handlePrint} className="group bg-gradient-to-r from-indigo-600 to-violet-600 text-white pl-6 pr-8 py-4 rounded-full shadow-2xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center font-bold text-lg cursor-pointer border-[3px] border-white ring-2 ring-indigo-200">
+                                <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mr-3 group-hover:rotate-12 transition-transform"><i className="fas fa-print"></i></div>列印 / 儲存 PDF
                             </button>
                         </div>
                     </div>
