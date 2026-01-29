@@ -15,6 +15,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
     <!-- Tesseract.js (保留引用) -->
     <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
 
@@ -108,47 +111,37 @@
                 height: auto !important; 
             }
 
-            /* --- 列印邊框樣式設定 (美化版) --- */
-            
-            /* 1. 外框：細線 (1px) + 圓角 (12px) */
+            /* 強制列印時邊框為黑色且加粗，並保留圓角 */
             .print-border {
-                border: 1px solid #000 !important; /* 改回細線 */
-                border-radius: 0.75rem !important; /* 強制圓角 */
+                border: 1px solid #000 !important; 
+                border-radius: 0.75rem !important; 
             }
             
             .print-border-dashed {
-                border: 1px dashed #000 !important; /* 改回細線 */
-                border-radius: 0.75rem !important; /* 強制圓角 */
+                border: 1px dashed #000 !important; 
+                border-radius: 0.75rem !important; 
             }
 
             .bill-copy.unified {
                 /* 賣家存根聯外框 */
-                border: 1px solid #000 !important; /* 改回細線 */
+                border: 1px solid #000 !important; 
                 border-radius: 0.75rem !important; /* 強制圓角 */
             }
             
-            /* 2. 表格線條：極細線 (0.5px 或 1px) */
-            th, td { 
-                border-color: #000 !important; 
-                border-width: 1px !important; 
-            }
+            /* 表格內部線條維持 1px 黑色 */
+            th, td { border-color: #000 !important; border-width: 1px !important; }
+            /* 修正表格內圓角溢出問題 */
+            table { border-radius: 0.75rem; border-collapse: separate !important; border-spacing: 0; overflow: hidden; }
+            /* 處理表格邊框重疊 */
+            th:first-child { border-top-left-radius: 0.75rem; }
             
-            /* 3. 圓角表格修正：避免圓角被直角背景蓋住 */
-            table { 
-                border-radius: 0.75rem; 
-                border-collapse: separate !important; 
-                border-spacing: 0; 
-                overflow: hidden; 
-            }
-            
-            /* 顏色調整 */
             .text-gray-500 { color: #000 !important; }
-            .bg-gray-100 { background-color: #f3f4f6 !important; } /* 淺灰底色保留 */
+            .bg-gray-100 { background-color: #f3f4f6 !important; } 
             .bg-slate-50 { background-color: #fff !important; }
             .bg-slate-800, .bg-gray-600 { 
-                background-color: #333 !important; /* 標題深色背景 */
+                background-color: #333 !important; 
                 color: #fff !important; 
-                border-radius: 9999px !important; /* 標題圓角 */
+                border-radius: 9999px !important; 
             }
             
             img { max-width: 100% !important; }
@@ -171,43 +164,57 @@
             const headerBg = isCutMode ? "bg-slate-800" : "bg-gray-600";
             
             const headerTextSize = "text-xl font-bold tracking-wide";
-            const idTextSize = "text-3xl font-jetbrains"; 
-            const nameTextSize = "text-2xl font-bold";
-            const labelTextSize = "text-xs uppercase tracking-wider font-semibold text-gray-500";
-            const noteTextSize = "text-base font-medium";
+            
+            // Unified styles for ID and Name
+            const infoTextSize = "text-xl font-bold"; 
+            const labelTextSize = "text-[10px] uppercase tracking-wider font-semibold text-gray-500";
+            const noteTextSize = "text-sm font-medium";
             const cellPadding = "p-2";
 
-            // Sub-component: Left Content (List)
+            // Sub-component: Left Content (Now Vertical Layout)
             const LeftContent = () => (
-                <table className="w-full text-left h-full border-collapse table-fixed rounded-xl overflow-hidden">
-                    <thead>
-                        <tr className="bg-gray-100 text-gray-800 text-xs border-b border-gray-300 h-8 shrink-0">
-                            <th className={`${cellPadding} w-10 text-center border-r border-gray-300`}>檢</th>
-                            <th className={`${cellPadding} w-[30%] border-r border-gray-300`}>訂單詳情</th>
-                            <th className={`${cellPadding}`}>商品內容</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td className={`${cellPadding} text-center align-middle border-r border-gray-300 bg-white h-full`}>
-                                <div className="border-2 border-gray-400 inline-block rounded-md w-5 h-5"></div>
-                            </td>
-                            <td className={`${cellPadding} align-top border-r border-gray-300 bg-white h-full`}>
-                                <div className="mb-3">
+                <div className="flex h-full w-full bg-white rounded-xl overflow-hidden">
+                    {/* Column 1: Checkbox (Left side strip) */}
+                    <div className="w-10 flex flex-col border-r border-gray-300 print:border-black shrink-0">
+                        <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center justify-center text-xs text-gray-800 font-bold shrink-0">
+                            檢
+                        </div>
+                        <div className="flex-grow bg-white flex items-center justify-center">
+                            <div className="border-2 border-gray-400 print:border-black inline-block rounded-md w-5 h-5"></div>
+                        </div>
+                    </div>
+
+                    {/* Column 2: Info & Product (Stacked Vertically) */}
+                    <div className="flex flex-col flex-grow min-w-0">
+                        
+                        {/* Top Section: Order Details */}
+                        <div className="flex flex-col border-b border-gray-300 print:border-black shrink-0">
+                            <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
+                                訂單詳情
+                            </div>
+                            <div className="p-2 flex flex-wrap gap-x-4 gap-y-1 items-start bg-white">
+                                <div className="flex-1 min-w-[140px]">
                                     <div className={labelTextSize}>訂單編號</div>
-                                    <div className={`font-mono ${idTextSize} leading-none break-all text-gray-900 mt-1`}>{orderData.orderId || "-"}</div>
+                                    <div className={`${infoTextSize} leading-tight break-all text-gray-900 mt-0.5`}>{orderData.orderId || "-"}</div>
                                 </div>
-                                <div>
+                                <div className="flex-1 min-w-[100px]">
                                     <div className={labelTextSize}>購買人</div>
-                                    <div className={`${nameTextSize} leading-tight text-gray-800 mt-1`}>{orderData.buyerName || "-"}</div>
+                                    <div className={`${infoTextSize} leading-tight break-all text-gray-900 mt-0.5`}>{orderData.buyerName || "-"}</div>
                                 </div>
                                 {orderData.note && (
-                                    <div className={`mt-3 text-red-700 bg-red-50 p-1.5 rounded border-l-4 border-red-500 ${noteTextSize}`}>
+                                    <div className={`w-full mt-1 text-red-700 bg-red-50 p-1.5 rounded border-l-4 border-red-500 ${noteTextSize}`}>
                                         <i className="fas fa-exclamation-triangle mr-1"></i>{orderData.note}
                                     </div>
                                 )}
-                            </td>
-                            <td className={`${cellPadding} align-top bg-white relative h-full p-0`}>
+                            </div>
+                        </div>
+
+                        {/* Bottom Section: Product Content (Takes remaining space) */}
+                        <div className="flex flex-col flex-grow min-h-0">
+                            <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
+                                商品內容
+                            </div>
+                            <div className="flex-grow relative w-full min-h-0 p-0 bg-white">
                                 <div className="flex flex-col w-full h-full">
                                     {img1 ? (
                                         <div className="flex-grow relative w-full h-full min-h-0 overflow-hidden group">
@@ -224,21 +231,21 @@
                                         </div>
                                     )}
                                     {orderData.products && (
-                                        <div className={`py-1.5 px-2 border-t border-dashed border-gray-300 bg-gray-50 text-gray-700 shrink-0 ${noteTextSize}`}>
+                                        <div className={`py-1.5 px-3 border-t border-dashed border-gray-300 print:border-black bg-gray-50 text-gray-700 shrink-0 ${noteTextSize}`}>
                                             <span className="font-bold text-gray-900">備註：</span> {orderData.products}
                                         </div>
                                     )}
                                 </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             );
 
             // Sub-component: Right Content (Receipt)
             const RightContent = () => (
                 <div className={`flex flex-col h-full w-full overflow-hidden ${isCutMode ? 'bg-amber-50' : 'bg-gray-50'}`}>
-                    <div className={`h-8 flex items-center justify-center text-[10px] font-bold tracking-widest border-b border-gray-300 shrink-0 w-full uppercase ${isCutMode ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-600'}`} style={{ borderBottomWidth: '1px' }}>
+                    <div className={`h-8 flex items-center justify-center text-[10px] font-bold tracking-widest border-b border-gray-300 print:border-black shrink-0 w-full uppercase ${isCutMode ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-600'}`} style={{ borderBottomWidth: '1px' }}>
                         {isCutMode ? <><i className="fas fa-cut mr-1"></i>物流單 (請剪下)</> : '存根聯 (留存)'}
                     </div>
                     <div className="p-2 flex-grow flex flex-col items-center justify-center relative min-h-0 overflow-hidden w-full">
@@ -266,7 +273,7 @@
 
             // Header
             const Header = () => (
-                <div className="flex justify-between items-center px-4 py-1.5 bg-white border-b border-gray-200 shrink-0" style={{ borderBottomWidth: '1px' }}>
+                <div className="flex justify-between items-center px-4 py-1.5 bg-white border-b border-gray-200 print:border-black shrink-0" style={{ borderBottomWidth: '1px' }}>
                     <h2 className={`flex items-center text-gray-800 ${headerTextSize}`}>
                         <i className="fas fa-file-invoice mr-2 text-slate-400"></i>
                         商品出貨清單 
@@ -314,9 +321,11 @@
                     <div className={`bill-copy unified rounded-xl overflow-hidden flex flex-col border-2 border-gray-300 bg-white shadow-sm ${containerHeight} print-border`}>
                         <Header />
                         <div className="flex items-stretch flex-grow min-h-0 relative">
-                            <div className="flex-grow flex flex-col w-[65%] border-r border-gray-300" style={{ borderRightWidth: '1px' }}>
+                            {/* 左側內容 */}
+                            <div className="flex-grow flex flex-col w-[65%] border-r border-gray-300 print:border-black" style={{ borderRightWidth: '1px' }}>
                                 <LeftContent />
                             </div>
+                            {/* 右側內容 */}
                             <div className="w-[35%] min-w-[150px] flex flex-col"> 
                                 <RightContent />
                             </div>
@@ -335,6 +344,12 @@
             const [text2, setText2] = useState("");
             const [progress2, setProgress2] = useState(0);
 
+            // Drag/Hover states
+            const [dragOverOrder, setDragOverOrder] = useState(false);
+            const [dragOverReceipt, setDragOverReceipt] = useState(false);
+            const [hoverOrder, setHoverOrder] = useState(false);
+            const [hoverReceipt, setHoverReceipt] = useState(false);
+
             const [orderData, setOrderData] = useState({
                 orderId: "",
                 buyerName: "",
@@ -346,29 +361,160 @@
             const [isProcessing, setIsProcessing] = useState(false);
             const [statusMessage, setStatusMessage] = useState("");
             
-            // Cropping
             const [croppingTarget, setCroppingTarget] = useState(null);
             const [cropStart, setCropStart] = useState(null);
             const [cropRect, setCropRect] = useState(null);
             const cropImgRef = useRef(null);
 
-            // --- Logic Functions ---
-            const handleImageUpload = (e, setImgFunc, setProgressFunc, setTextFunc, parseType) => {
-                const file = e.target.files[0];
+            // --- Unified File Processor ---
+            const processFile = async (file, target) => {
                 if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                    setImgFunc(reader.result);
-                    // No OCR for any upload
+                
+                if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                    setStatusMessage("檔案格式不支援，請上傳圖片或 PDF");
+                    setTimeout(() => setStatusMessage(""), 2000);
+                    return;
+                }
+
+                if (file.type === 'application/pdf') {
+                    setIsProcessing(true);
+                    setStatusMessage(`正在處理 PDF...`);
+                    try {
+                        const imgData = await convertPdfToImage(file);
+                        if (target === 'order') setImg1(imgData);
+                        else setImg2(imgData);
+                        setStatusMessage("PDF 匯入成功");
+                    } catch (error) {
+                        console.error("PDF Error:", error);
+                        setStatusMessage("PDF 處理失敗");
+                    } finally {
+                        setIsProcessing(false);
+                        setTimeout(() => setStatusMessage(""), 2000);
+                    }
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        if (target === 'order') setImg1(event.target.result);
+                        else setImg2(event.target.result);
+                        setStatusMessage("圖片匯入成功");
+                        setTimeout(() => setStatusMessage(""), 2000);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            // --- Handlers ---
+            const handleImageUpload = (e, target) => {
+                const file = e.target.files[0];
+                processFile(file, target);
+            };
+
+            const handleDrop = (e, target) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (target === 'order') setDragOverOrder(false);
+                else setDragOverReceipt(false);
+
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    processFile(e.dataTransfer.files[0], target);
+                }
+            };
+
+            const handleDragOver = (e, target) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (target === 'order') setDragOverOrder(true);
+                else setDragOverReceipt(true);
+            };
+
+            const handleDragLeave = (e, target) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (target === 'order') setDragOverOrder(false);
+                else setDragOverReceipt(false);
+            };
+
+            // --- Global Paste Handler ---
+            useEffect(() => {
+                const handlePaste = (e) => {
+                    const items = e.clipboardData.items;
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf("image") !== -1) {
+                            const blob = items[i].getAsFile();
+                            // If user is hovering over receipt area, paste there. Default to order.
+                            const target = hoverReceipt ? 'receipt' : 'order'; 
+                            processFile(blob, target);
+                            
+                            const targetName = target === 'order' ? "商品明細" : "小白單";
+                            setStatusMessage(`已貼上圖片至：${targetName}`);
+                            e.preventDefault();
+                            break;
+                        }
+                    }
                 };
-                reader.readAsDataURL(file);
+                window.addEventListener('paste', handlePaste);
+                return () => window.removeEventListener('paste', handlePaste);
+            }, [hoverReceipt]); 
+
+            // --- Helper Functions ---
+            const convertPdfToImage = async (file) => {
+                const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2.0 });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+
+                return canvas.toDataURL('image/png');
             };
 
-            const autoFillData = (text, type) => {
-                // Manual helper kept, but auto-fill disabled
+            const handleScreenCapture = async (target) => {
+                setStatusMessage("準備截圖...");
+                try {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                        throw new Error("API_NOT_SUPPORTED");
+                    }
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "never" }, audio: false });
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.onloadedmetadata = async () => {
+                        video.play();
+                        await new Promise(r => setTimeout(r, 500));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0);
+                        const imgData = canvas.toDataURL('image/png');
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        if (target === 'order') setImg1(imgData); else setImg2(imgData);
+                        setStatusMessage("螢幕截圖成功");
+                        setTimeout(() => setStatusMessage(""), 2000);
+                    };
+                } catch (err) {
+                    console.error("Screen capture error:", err);
+                    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+                        setStatusMessage("環境限制無法截圖，請按 Ctrl+V 貼上");
+                    } else if (err.message === "API_NOT_SUPPORTED") {
+                        setStatusMessage("此瀏覽器不支援截圖，請用 Ctrl+V");
+                    } else {
+                        setStatusMessage("截圖錯誤，請改用上傳或貼上");
+                    }
+                    setTimeout(() => setStatusMessage(""), 3000);
+                }
             };
 
-            // Crop Logic
             const startCrop = (e) => { e.preventDefault(); const r = e.target.getBoundingClientRect(); setCropStart({x: e.clientX-r.left, y: e.clientY-r.top, width: r.width, height: r.height}); setCropRect(null); };
             const doCrop = (e) => { if(!cropStart) return; e.preventDefault(); const r = e.target.getBoundingClientRect(); const cx = e.clientX-r.left, cy = e.clientY-r.top; setCropRect({x: Math.min(cropStart.x, cx), y: Math.min(cropStart.y, cy), w: Math.abs(cx-cropStart.x), h: Math.abs(cy-cropStart.y)}); };
             const endCrop = () => setCropStart(null);
@@ -378,8 +524,7 @@
                 const canvas = document.createElement('canvas'); canvas.width = cropRect.w*sx; canvas.height = cropRect.h*sy;
                 const ctx = canvas.getContext('2d'); ctx.drawImage(img, cropRect.x*sx, cropRect.y*sy, cropRect.w*sx, cropRect.h*sy, 0, 0, canvas.width, canvas.height);
                 const url = canvas.toDataURL('image/png');
-                if (croppingTarget==='order') { setImg1(url); }
-                else { setImg2(url); }
+                if (croppingTarget==='order') { setImg1(url); } else { setImg2(url); }
                 setCroppingTarget(null); setCropRect(null);
             };
             const cancelCrop = () => { setCroppingTarget(null); setCropRect(null); };
@@ -397,7 +542,6 @@
 
             const clearAll = () => { setImg1(null); setText1(""); setProgress1(0); setImg2(null); setText2(""); setProgress2(0); setOrderData({ orderId: "", buyerName: "", products: "", trackingNumber: "", note: "" }); setStatusMessage(""); };
 
-            // --- Render Cropper Modal ---
             const renderCropper = () => {
                 const imgSrc = croppingTarget === 'order' ? img1 : img2;
                 if (!imgSrc) return null;
@@ -405,8 +549,8 @@
                     <div className="fixed inset-0 z-[100000] bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-sm">
                         <div className="bg-white rounded-2xl overflow-hidden max-w-6xl w-full flex flex-col h-[90vh] shadow-2xl animate-fade-in">
                             <div className="p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
-                                <div><h3 className="font-bold text-xl flex items-center"><i className="fas fa-crop-alt mr-3 text-amber-400"></i>圖片裁切工具</h3><p className="text-slate-400 text-sm mt-1">請框選要顯示的區域</p></div>
-                                <button onClick={cancelCrop} className="w-10 h-10 rounded-full hover:bg-slate-700 flex items-center justify-center transition"><i className="fas fa-times text-xl"></i></button>
+                                <div><h3 className="font-bold text-xl flex items-center"><i className="fas fa-crop-alt mr-3 text-amber-400"></i>圖片裁切工具</h3></div>
+                                <button onClick={cancelCrop}><i className="fas fa-times text-xl"></i></button>
                             </div>
                             <div className="flex-1 overflow-auto bg-slate-900 flex justify-center items-center p-8 relative cursor-crosshair">
                                 <div className="crop-container" onMouseDown={startCrop} onMouseMove={doCrop} onMouseUp={endCrop} onMouseLeave={endCrop}>
@@ -425,7 +569,6 @@
 
             return (
                 <div className="min-h-screen pb-48 font-sans">
-                    {/* Modern Header */}
                     <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 text-white p-6 shadow-xl no-print relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-10"><i className="fas fa-shipping-fast text-9xl"></i></div>
                         <div className="max-w-6xl mx-auto flex justify-between items-center relative z-10">
@@ -434,7 +577,7 @@
                                     <span className="bg-indigo-500 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg"><i className="fas fa-box-open text-xl"></i></span>
                                     商品出貨清單 <span className="text-indigo-300 text-sm font-normal self-end mb-1 ml-2">v3.0 Pro</span>
                                 </h1>
-                                <p className="text-slate-300 text-sm mt-2 ml-14">智能 OCR 識別 · 雙聯排版 · 完美 A4 列印</p>
+                                <p className="text-slate-300 text-sm mt-2 ml-14">支援拖放 / Ctrl+V 貼上 / 螢幕截圖</p>
                             </div>
                             <button onClick={clearAll} className="text-sm bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg backdrop-blur-sm transition border border-white/10 flex items-center gap-2">
                                 <i className="fas fa-trash-alt"></i> 清除重置
@@ -451,10 +594,16 @@
                         )}
                         {croppingTarget && renderCropper()}
 
-                        {/* Upload Cards Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 no-print">
-                            {/* Card 1 */}
-                            <div className="bg-white p-1 rounded-2xl shadow-lg border border-slate-100 hover:shadow-xl transition-shadow duration-300">
+                            {/* Card 1: Order */}
+                            <div 
+                                className={`bg-white p-1 rounded-2xl shadow-lg border-2 transition-all duration-300 ${dragOverOrder ? 'border-indigo-500 bg-indigo-50 scale-[1.02]' : 'border-slate-100 hover:shadow-xl'}`}
+                                onDrop={(e) => handleDrop(e, 'order')}
+                                onDragOver={(e) => handleDragOver(e, 'order')}
+                                onDragLeave={(e) => handleDragLeave(e, 'order')}
+                                onMouseEnter={() => setHoverOrder(true)}
+                                onMouseLeave={() => setHoverOrder(false)}
+                            >
                                 <div className="p-6">
                                     <h2 className="text-lg font-bold text-slate-700 mb-6 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -462,11 +611,14 @@
                                             上傳商品明細
                                         </div>
                                         <div className="flex gap-2">
+                                            <button onClick={() => handleScreenCapture('order')} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
+                                                <i className="fas fa-desktop"></i> 截圖
+                                            </button>
                                             {img1 && (
                                                 <>
                                                     <label className="cursor-pointer text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
                                                         <i className="fas fa-sync-alt"></i> 換圖
-                                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg1, setProgress1, setText1, 'order')} />
+                                                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleImageUpload(e, 'order')} />
                                                     </label>
                                                     <button onClick={() => setCroppingTarget('order')} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
                                                         <i className="fas fa-crop-alt"></i> 裁切
@@ -476,18 +628,29 @@
                                         </div>
                                     </h2>
                                     {!img1 ? (
-                                        <label className="group block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-10 text-center transition duration-300">
-                                            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><i className="fas fa-cloud-upload-alt text-3xl text-indigo-500"></i></div>
-                                            <span className="block text-slate-600 font-medium">點擊上傳截圖</span><input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg1, setProgress1, setText1, 'order')} />
-                                        </label>
+                                        <div className="space-y-4">
+                                            <label className="group block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-10 text-center transition duration-300">
+                                                <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><i className="fas fa-cloud-upload-alt text-3xl text-indigo-500"></i></div>
+                                                <span className="block text-slate-600 font-medium">點擊/拖放/貼上 (Ctrl+V)</span>
+                                                <span className="block text-slate-400 text-xs mt-1">支援 截圖, PDF, JPG, PNG</span>
+                                                <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleImageUpload(e, 'order')} />
+                                            </label>
+                                        </div>
                                     ) : (
                                         <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group"><img src={img1} className="w-full h-full object-contain" /></div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Card 2 */}
-                            <div className="bg-white p-1 rounded-2xl shadow-lg border border-slate-100 hover:shadow-xl transition-shadow duration-300">
+                            {/* Card 2: Receipt */}
+                            <div 
+                                className={`bg-white p-1 rounded-2xl shadow-lg border-2 transition-all duration-300 ${dragOverReceipt ? 'border-orange-500 bg-orange-50 scale-[1.02]' : 'border-slate-100 hover:shadow-xl'}`}
+                                onDrop={(e) => handleDrop(e, 'receipt')}
+                                onDragOver={(e) => handleDragOver(e, 'receipt')}
+                                onDragLeave={(e) => handleDragLeave(e, 'receipt')}
+                                onMouseEnter={() => setHoverReceipt(true)}
+                                onMouseLeave={() => setHoverReceipt(false)}
+                            >
                                 <div className="p-6">
                                     <h2 className="text-lg font-bold text-slate-700 mb-6 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -495,11 +658,14 @@
                                             上傳小白單 (物流單)
                                         </div>
                                         <div className="flex gap-2">
+                                            <button onClick={() => handleScreenCapture('receipt')} className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
+                                                <i className="fas fa-desktop"></i> 截圖
+                                            </button>
                                             {img2 && (
                                                 <>
                                                     <label className="cursor-pointer text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
                                                         <i className="fas fa-sync-alt"></i> 換圖
-                                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg2, setProgress2, setText2, 'receipt')} />
+                                                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleImageUpload(e, 'receipt')} />
                                                     </label>
                                                     <button onClick={() => setCroppingTarget('receipt')} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
                                                         <i className="fas fa-crop-alt"></i> 裁切
@@ -511,7 +677,9 @@
                                     {!img2 ? (
                                         <label className="group block w-full cursor-pointer bg-slate-50 border-2 border-dashed border-slate-300 hover:border-orange-500 rounded-xl p-10 text-center transition duration-300">
                                             <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"><i className="fas fa-receipt text-3xl text-orange-500"></i></div>
-                                            <span className="block text-slate-600 font-medium">點擊上傳小白單</span><input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, setImg2, setProgress2, setText2, 'receipt')} />
+                                            <span className="block text-slate-600 font-medium">點擊/拖放/貼上</span>
+                                            <span className="block text-slate-400 text-xs mt-1">游標移至此處按 Ctrl+V</span>
+                                            <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleImageUpload(e, 'receipt')} />
                                         </label>
                                     ) : (
                                         <div className="relative h-64 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 group"><img src={img2} className="w-full h-full object-contain" /></div>
@@ -526,8 +694,8 @@
                                 <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold">Auto Syncing</span>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label className="block text-sm font-semibold text-slate-600">訂單編號</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition font-mono text-slate-700" value={orderData.orderId} onChange={(e) => setOrderData({...orderData, orderId: e.target.value})} placeholder="例如: TW-20230501" /></div>
-                                <div><label className="block text-sm font-semibold text-slate-600">購買人 / 會員帳號</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.buyerName} onChange={(e) => setOrderData({...orderData, buyerName: e.target.value})} placeholder="例如: 王小明" /></div>
+                                <div><label className="block text-sm font-semibold text-slate-600">訂單編號</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition font-mono text-slate-700" value={orderData.orderId} onChange={(e) => setOrderData({...orderData, orderId: e.target.value})} placeholder="例如: 2601288GNAAPU1" /></div>
+                                <div><label className="block text-sm font-semibold text-slate-600">購買人 / 會員帳號</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.buyerName} onChange={(e) => setOrderData({...orderData, buyerName: e.target.value})} placeholder="例如: eh52t70qxs" /></div>
                                 <div className="md:col-span-2"><label className="block text-sm font-semibold text-slate-600">商品明細 (補充文字)</label><textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-lg h-24 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.products} onChange={(e) => setOrderData({...orderData, products: e.target.value})} placeholder="若圖片不清楚，可在此補充文字說明..."></textarea></div>
                                 <div><label className="block text-sm font-semibold text-slate-600">備註 (易碎品/發票等)</label><input type="text" className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition text-slate-700" value={orderData.note} onChange={(e) => setOrderData({...orderData, note: e.target.value})} placeholder="例如: 請小心輕放" /></div>
                             </div>
@@ -547,9 +715,11 @@
 
                         <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 no-print z-[99999]">
                              <div className="text-xs text-slate-500 bg-white/90 px-3 py-1.5 rounded-lg shadow-md backdrop-blur-sm border border-white"><i className="fas fa-info-circle mr-1"></i> 若按鈕無效請按 Ctrl+P</div>
-                            <button onClick={handlePrint} className="group bg-gradient-to-r from-indigo-600 to-violet-600 text-white pl-6 pr-8 py-4 rounded-full shadow-2xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center font-bold text-lg cursor-pointer border-[3px] border-white ring-2 ring-indigo-200">
-                                <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mr-3 group-hover:rotate-12 transition-transform"><i className="fas fa-print"></i></div>列印 / 儲存 PDF
-                            </button>
+                            <div className="flex gap-4">
+                                <button onClick={handlePrint} className="group bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-3 rounded-full shadow-2xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center font-bold text-lg cursor-pointer border-[3px] border-white ring-2 ring-indigo-200">
+                                    <div className="bg-white/20 w-8 h-8 rounded-full flex items-center justify-center mr-3 group-hover:rotate-12 transition-transform"><i className="fas fa-print"></i></div>列印 / 儲存 PDF
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
