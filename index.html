@@ -123,13 +123,13 @@
             }
 
             .bill-copy.unified {
-                /* 賣家存根聯外框 */
                 border: 1px solid #000 !important; 
-                border-radius: 0.75rem !important; /* 強制圓角 */
+                border-radius: 0.75rem !important; 
             }
             
-            /* 表格內部線條維持 1px 黑色 */
-            th, td { border-color: #000 !important; border-width: 1px !important; }
+            /* 表格/區塊內部線條維持 1px 黑色 */
+            .print\:border-black { border-color: #000 !important; }
+            
             /* 修正表格內圓角溢出問題 */
             table { border-radius: 0.75rem; border-collapse: separate !important; border-spacing: 0; overflow: hidden; }
             /* 處理表格邊框重疊 */
@@ -169,73 +169,58 @@
             const infoTextSize = "text-xl font-bold"; 
             const labelTextSize = "text-[10px] uppercase tracking-wider font-semibold text-gray-500";
             const noteTextSize = "text-sm font-medium";
-            const cellPadding = "p-2";
-
-            // Sub-component: Left Content (Now Vertical Layout)
+            
+            // Sub-component: Left Content (Vertical Layout, No Checkbox)
             const LeftContent = () => (
-                <div className="flex h-full w-full bg-white rounded-xl overflow-hidden">
-                    {/* Column 1: Checkbox (Left side strip) */}
-                    <div className="w-10 flex flex-col border-r border-gray-300 print:border-black shrink-0">
-                        <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center justify-center text-xs text-gray-800 font-bold shrink-0">
-                            檢
+                <div className="flex flex-col h-full w-full bg-white rounded-xl overflow-hidden">
+                    {/* Top Section: Order Details */}
+                    <div className="flex flex-col border-b border-gray-300 print:border-black shrink-0">
+                        <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
+                            訂單詳情
                         </div>
-                        <div className="flex-grow bg-white flex items-center justify-center">
-                            <div className="border-2 border-gray-400 print:border-black inline-block rounded-md w-5 h-5"></div>
+                        <div className="p-2 flex flex-wrap gap-x-4 gap-y-1 items-start bg-white">
+                            <div className="flex-1 min-w-[140px]">
+                                <div className={labelTextSize}>訂單編號</div>
+                                <div className={`font-mono ${infoTextSize} leading-tight break-all text-gray-900 mt-0.5`}>{orderData.orderId || "-"}</div>
+                            </div>
+                            <div className="flex-1 min-w-[100px]">
+                                <div className={labelTextSize}>購買人</div>
+                                <div className={`${infoTextSize} leading-tight break-all text-gray-900 mt-0.5`}>{orderData.buyerName || "-"}</div>
+                            </div>
+                            {orderData.note && (
+                                <div className={`w-full mt-1 text-red-700 bg-red-50 p-1.5 rounded border-l-4 border-red-500 ${noteTextSize}`}>
+                                    <i className="fas fa-exclamation-triangle mr-1"></i>{orderData.note}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Column 2: Info & Product (Stacked Vertically) */}
-                    <div className="flex flex-col flex-grow min-w-0">
-                        
-                        {/* Top Section: Order Details */}
-                        <div className="flex flex-col border-b border-gray-300 print:border-black shrink-0">
-                            <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
-                                訂單詳情
-                            </div>
-                            <div className="p-2 flex flex-wrap gap-x-4 gap-y-1 items-start bg-white">
-                                <div className="flex-1 min-w-[140px]">
-                                    <div className={labelTextSize}>訂單編號</div>
-                                    <div className={`${infoTextSize} leading-tight break-all text-gray-900 mt-0.5`}>{orderData.orderId || "-"}</div>
-                                </div>
-                                <div className="flex-1 min-w-[100px]">
-                                    <div className={labelTextSize}>購買人</div>
-                                    <div className={`${infoTextSize} leading-tight break-all text-gray-900 mt-0.5`}>{orderData.buyerName || "-"}</div>
-                                </div>
-                                {orderData.note && (
-                                    <div className={`w-full mt-1 text-red-700 bg-red-50 p-1.5 rounded border-l-4 border-red-500 ${noteTextSize}`}>
-                                        <i className="fas fa-exclamation-triangle mr-1"></i>{orderData.note}
+                    {/* Bottom Section: Product Content (Takes remaining space) */}
+                    <div className="flex flex-col flex-grow min-h-0">
+                        <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
+                            商品內容
+                        </div>
+                        <div className="flex-grow relative w-full min-h-0 p-0 bg-white">
+                            <div className="flex flex-col w-full h-full">
+                                {img1 ? (
+                                    <div className="flex-grow relative w-full h-full min-h-0 overflow-hidden group">
+                                        <img 
+                                            src={img1} 
+                                            alt="商品明細" 
+                                            className="absolute inset-0 w-full h-full object-contain object-top transition-transform duration-500" 
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="flex-grow flex flex-col items-center justify-center text-gray-300 h-full bg-slate-50">
+                                        <i className="fas fa-image text-4xl mb-2"></i>
+                                        <span className="text-xs">等待圖片上傳...</span>
                                     </div>
                                 )}
-                            </div>
-                        </div>
-
-                        {/* Bottom Section: Product Content (Takes remaining space) */}
-                        <div className="flex flex-col flex-grow min-h-0">
-                            <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
-                                商品內容
-                            </div>
-                            <div className="flex-grow relative w-full min-h-0 p-0 bg-white">
-                                <div className="flex flex-col w-full h-full">
-                                    {img1 ? (
-                                        <div className="flex-grow relative w-full h-full min-h-0 overflow-hidden group">
-                                            <img 
-                                                src={img1} 
-                                                alt="商品明細" 
-                                                className="absolute inset-0 w-full h-full object-contain object-top transition-transform duration-500" 
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex-grow flex flex-col items-center justify-center text-gray-300 h-full bg-slate-50">
-                                            <i className="fas fa-image text-4xl mb-2"></i>
-                                            <span className="text-xs">等待圖片上傳...</span>
-                                        </div>
-                                    )}
-                                    {orderData.products && (
-                                        <div className={`py-1.5 px-3 border-t border-dashed border-gray-300 print:border-black bg-gray-50 text-gray-700 shrink-0 ${noteTextSize}`}>
-                                            <span className="font-bold text-gray-900">備註：</span> {orderData.products}
-                                        </div>
-                                    )}
-                                </div>
+                                {orderData.products && (
+                                    <div className={`py-1.5 px-3 border-t border-dashed border-gray-300 print:border-black bg-gray-50 text-gray-700 shrink-0 ${noteTextSize}`}>
+                                        <span className="font-bold text-gray-900">備註：</span> {orderData.products}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -293,9 +278,10 @@
             if (isCutMode) {
                 // --- 隨貨寄出聯 (分離式設計) ---
                 return (
-                    <div className={`bill-copy flex gap-3 print:gap-4 items-stretch ${containerHeight} bg-transparent border-0 shadow-none rounded-none p-0`}>
-                        {/* 左側：商品出貨清單 */}
-                        <div className="flex-grow flex flex-col w-[63%] border-2 border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm print-border">
+                    // Gap reduced to 2
+                    <div className={`bill-copy flex gap-2 print:gap-3 items-stretch ${containerHeight} bg-transparent border-0 shadow-none rounded-none p-0`}>
+                        {/* 左側：商品出貨清單 - 寬度調整為 64% (移除了檢核欄，空間轉移) */}
+                        <div className="flex-grow flex flex-col w-[64%] border-2 border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm print-border">
                             <Header />
                             <div className="flex-grow min-h-0 relative">
                                 <LeftContent />
@@ -303,14 +289,14 @@
                         </div>
 
                         {/* 中間：剪裁線 */}
-                        <div className="flex flex-col items-center justify-center relative mx-1 print:mx-2 w-0 border-l-2 border-dashed border-gray-300 shrink-0" style={{borderWidth: '0 0 0 2px'}}>
+                        <div className="flex flex-col items-center justify-center relative w-0 border-l-2 border-dashed border-gray-300 shrink-0" style={{borderWidth: '0 0 0 2px'}}>
                             <div className="absolute bg-white text-gray-400 p-0.5 rounded-full border border-gray-200 print:hidden">
                                 <i className="fas fa-cut text-xs"></i>
                             </div>
                         </div>
 
-                        {/* 右側：物流單 */}
-                        <div className="w-[33%] min-w-[150px] flex flex-col border-2 border-gray-400 border-dashed rounded-xl overflow-hidden bg-white shadow-sm relative print-border-dashed">
+                        {/* 右側：物流單 - 寬度增加至 34% */}
+                        <div className="w-[34%] min-w-[150px] flex flex-col border-2 border-gray-400 border-dashed rounded-xl overflow-hidden bg-white shadow-sm relative print-border-dashed">
                             <RightContent />
                         </div>
                     </div>
@@ -321,12 +307,12 @@
                     <div className={`bill-copy unified rounded-xl overflow-hidden flex flex-col border-2 border-gray-300 bg-white shadow-sm ${containerHeight} print-border`}>
                         <Header />
                         <div className="flex items-stretch flex-grow min-h-0 relative">
-                            {/* 左側內容 */}
-                            <div className="flex-grow flex flex-col w-[65%] border-r border-gray-300 print:border-black" style={{ borderRightWidth: '1px' }}>
+                            {/* 左側內容 - 寬度調整為 60% */}
+                            <div className="flex-grow flex flex-col w-[60%] border-r border-gray-300 print:border-black" style={{ borderRightWidth: '1px' }}>
                                 <LeftContent />
                             </div>
-                            {/* 右側內容 */}
-                            <div className="w-[35%] min-w-[150px] flex flex-col"> 
+                            {/* 右側內容 - 寬度增加至 40% */}
+                            <div className="w-[40%] min-w-[150px] flex flex-col"> 
                                 <RightContent />
                             </div>
                         </div>
