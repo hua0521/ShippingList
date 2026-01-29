@@ -173,10 +173,11 @@
             // Sub-component: Left Content (Vertical Layout, No Checkbox)
             const LeftContent = () => (
                 <div className="flex flex-col h-full w-full bg-white rounded-xl overflow-hidden">
+                    
                     {/* Top Section: Order Details */}
                     <div className="flex flex-col border-b border-gray-300 print:border-black shrink-0">
                         <div className="h-8 bg-gray-100 border-b border-gray-300 print:border-black flex items-center px-3 text-xs text-gray-800 font-bold shrink-0">
-                            訂單詳情
+                            訂單資訊
                         </div>
                         <div className="p-2 flex flex-wrap gap-x-4 gap-y-1 items-start bg-white">
                             <div className="flex-1 min-w-[140px]">
@@ -266,12 +267,11 @@
                             {titleTag}
                         </span>
                     </h2>
-                    {isCutMode && (
-                        <div className="text-right flex items-center gap-2 text-gray-500">
-                            <i className="far fa-calendar-alt text-xs"></i>
-                            <div className="text-xs font-mono">{new Date().toLocaleDateString()}</div>
-                        </div>
-                    )}
+                    {/* Date displayed for both modes now */}
+                    <div className="text-right flex items-center gap-2 text-gray-500">
+                        <i className="far fa-calendar-alt text-xs"></i>
+                        <div className="text-xs font-mono">{new Date().toLocaleDateString()}</div>
+                    </div>
                 </div>
             );
 
@@ -280,8 +280,8 @@
                 return (
                     // Gap reduced to 2
                     <div className={`bill-copy flex gap-2 print:gap-3 items-stretch ${containerHeight} bg-transparent border-0 shadow-none rounded-none p-0`}>
-                        {/* 左側：商品出貨清單 - 寬度調整為 64% (移除了檢核欄，空間轉移) */}
-                        <div className="flex-grow flex flex-col w-[64%] border-2 border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm print-border">
+                        {/* 左側：商品出貨清單 - 寬度調整為 58% (保留 gap 空間) */}
+                        <div className="flex-grow flex flex-col w-[58%] border-2 border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm print-border">
                             <Header />
                             <div className="flex-grow min-h-0 relative">
                                 <LeftContent />
@@ -295,8 +295,8 @@
                             </div>
                         </div>
 
-                        {/* 右側：物流單 - 寬度增加至 34% */}
-                        <div className="w-[34%] min-w-[150px] flex flex-col border-2 border-gray-400 border-dashed rounded-xl overflow-hidden bg-white shadow-sm relative print-border-dashed">
+                        {/* 右側：物流單 - 寬度增加至 38% (Total 96% + gap + divider) */}
+                        <div className="w-[38%] min-w-[150px] flex flex-col border-2 border-gray-400 border-dashed rounded-xl overflow-hidden bg-white shadow-sm relative print-border-dashed">
                             <RightContent />
                         </div>
                     </div>
